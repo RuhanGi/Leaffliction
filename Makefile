@@ -30,7 +30,7 @@ d: f
 	python Distribution.py $(DATASET)/Grape
 
 a: f
-	python Augmentation.py
+	python Augmentation.py $(DATASET)/Apple/Healthy/*
 
 clean:
 	find . -name .DS_Store -delete
@@ -40,7 +40,7 @@ fclean: clean
 
 gpush: fclean
 	git add .
-	git commit -m "initial"
+	git commit -m "image transform"
 	git push
 
 re: fclean all
