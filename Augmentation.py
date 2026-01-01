@@ -8,13 +8,6 @@ from modules.config import DISPLAY, on_key, RED, RESET
 from modules.augments import transform
 
 
-def graph(dir, all_files):
-    fig, ax = plt.subplots(1, 2, figsize=(12, 6), num=(dir + " Distribution"))
-    ax[0].pie()
-    fig.canvas.mpl_connect('key_press_event', on_key)
-    plt.show()
-
-
 def vis(data):
     keys = list(data.keys())
     arr2d = list(data.values())

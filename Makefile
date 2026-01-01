@@ -32,15 +32,18 @@ d: f
 a: f
 	python Augmentation.py $(DATASET)/Apple/Healthy/*
 
+t: f
+	python Transformation.py -src $(DATASET)/Grape/Healthy
+
 clean:
-	find . -name .DS_Store -delete
+
 
 fclean: clean
 
 
 gpush: fclean
 	git add .
-	git commit -m "part 2 done"
+	git commit -m "Transformation Setup"
 	git push
 
 re: fclean all
