@@ -40,7 +40,7 @@ fclean: clean
 
 gpush: fclean
 	git add .
-	git commit -m "image transform"
+	git commit -m "part 2 done"
 	git push
 
 re: fclean all

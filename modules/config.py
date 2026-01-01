@@ -8,6 +8,8 @@ YELLOW = "\033[93m"
 CYAN = "\033[96m"
 RESET = "\033[0m"
 
+DISPLAY = 6
+
 
 def on_key(event):
     if event.key == 'escape':

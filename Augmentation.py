@@ -1,9 +1,11 @@
 import matplotlib.pyplot as plt
 import argparse
-import math
+import numpy as np
 import cv2
+import os
 
-from modules.config import on_key, RED, RESET
+from modules.config import DISPLAY, on_key, RED, RESET
+from modules.augments import transform
 
 
 def graph(dir, all_files):
@@ -13,61 +15,57 @@ def graph(dir, all_files):
     plt.show()
 
 
-def see(imgs):
-    n = len(imgs)
-    cols = math.ceil(math.sqrt(n))
-    rows = math.ceil(n / cols)
-    fig, axes = plt.subplots(rows, cols, figsize=(cols*4, rows*4))
-    if n > 1:
-        axes = axes.flatten()
-    else:
-        axes = [axes]
-
-    for i, ax in enumerate(axes):
-        if i < n:
-            cv_img = cv2.imread(imgs[i])
-            img_rgb = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
-            ax.imshow(img_rgb)
-            ax.axis('off')
-            # ax.set_title(f"Image {i+1}")
-        else:
-            ax.axis('off')
-
-    fig.canvas.mpl_connect('key_press_event', on_key)
-    plt.tight_layout()
-    plt.show()
-
-
-def vis(arr2d):
-    if len(arr2d) == 0 or len(arr2d[0]) == 0:
+def vis(data):
+    keys = list(data.keys())
+    arr2d = list(data.values())
+    if not arr2d or not arr2d[0]:
         return
 
     cols = len(arr2d)
-    rows = len(arr2d[0])
-    fig, axes = plt.subplots(rows, cols, figsize=(cols*4, rows*4))
-    for i in range(rows):
-        for j in range(cols):
+    rows = min(len(arr2d[0]), DISPLAY)
+    fig, axes = plt.subplots(
+        rows, cols,
+        figsize=(cols*2, rows*2),
+        num="Data Augmentation"
+    )
+    if rows == 1 and cols == 1:
+        axes = np.array([[axes]])
+    elif rows == 1:
+        axes = axes.reshape(1, -1)
+    elif cols == 1:
+        axes = axes.reshape(-1, 1)
+
+    for j in range(cols):
+        axes[0][j].set_title(keys[j], fontsize=12, fontweight='bold', pad=5)
+        for i in range(rows):
             axes[i][j].imshow(arr2d[j][i])
             axes[i][j].axis('off')
+    plt.subplots_adjust(wspace=0.05, hspace=0.05)
     fig.canvas.mpl_connect('key_press_event', on_key)
-    plt.tight_layout()
     plt.show()
 
 
-def transform(imgs):
-    arr2d = [imgs]
-    # 1 = Horizontal, 0 = Vertical, -1 = Both
-    arr2d.append([cv2.flip(img, 0) for img in imgs])
-    # specific constant for 90 degrees
-    arr2d.append([cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE) for img in imgs])
-    return arr2d
-
-
 def cved(imgs):
-    # ! DO ERROR HANDLING
-    cv_imgs = [cv2.imread(img) for img in imgs]
-    imgs_rgb = [cv2.cvtColor(img, cv2.COLOR_BGR2RGB) for img in cv_imgs]
-    return imgs_rgb
+    processed = []
+    for path in imgs:
+        assert os.path.isfile(path), f"improper file: '{path}'"
+        img = cv2.imread(path)
+        assert img is not None, f"improper image '{path}'"
+        processed.append(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    return processed
+
+
+def save_files(og_paths, data):
+    for change, imgs in data.items():
+        if change == "Original":
+            continue
+        suffix = "_" + change.replace(" ", "_")
+        for i, img_rgb in enumerate(imgs):
+            if i < len(og_paths):
+                root, ext = os.path.splitext(og_paths[i])
+                new_path = f"{root}{suffix}{ext}"
+                img_bgr = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR)
+                cv2.imwrite(new_path, img_bgr)
 
 
 def main():
@@ -75,12 +73,16 @@ def main():
         description="Augments an image and displays it"
     )
     parser.add_argument('imgs', nargs='+', help='image to augment')
+    parser.add_argument('--save', action='store_true', help='Save changes')
     args = parser.parse_args()
 
-    # see(args.imgs[:8])
-    imgs = cved(args.imgs[:3])
-    arr2d = transform(imgs)
-    vis(arr2d)
+    if not args.save:
+        args.imgs = args.imgs[:DISPLAY]
+    imgs = cved(args.imgs)
+    data = transform(imgs)
+    vis(data)
+    if args.save:
+        save_files(args.imgs, data)
 
 
 if __name__ == "__main__":
