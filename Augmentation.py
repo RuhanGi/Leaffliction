@@ -67,6 +67,7 @@ def main():
     )
     parser.add_argument('imgs', nargs='+', help='image to augment')
     parser.add_argument('--save', action='store_true', help='Save changes')
+    parser.add_argument('-number', )
     args = parser.parse_args()
 
     if not args.save:

@@ -84,11 +84,11 @@ def apply_landmarks(img):
 
 def transform(imgs):
     data = {
-        "Original":       imgs,
+        # "Original":       imgs,
         "Gaussian Blur":  [cv2.GaussianBlur(img, (15, 15), 0) for img in imgs],
         "Mask":           [apply_mask(img) for img in imgs],
-        "ROI Objects":    [apply_roi(img) for img in imgs],
-        "Analyze Object": [apply_analyze(img) for img in imgs],
-        "Pseudolandmarks": [apply_landmarks(img) for img in imgs]
+        # "ROI Objects":    [apply_roi(img) for img in imgs],
+        # "Analyze Object": [apply_analyze(img) for img in imgs],
+        # "Pseudolandmarks": [apply_landmarks(img) for img in imgs]
     }
     return data

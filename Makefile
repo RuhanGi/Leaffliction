@@ -43,7 +43,7 @@ fclean: clean
 
 gpush: fclean
 	git add .
-	git commit -m "Transformation Setup"
+	git commit -m "Train"
 	git push
 
 re: fclean all
