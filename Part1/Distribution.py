@@ -15,7 +15,6 @@ def collect_distribution(root_dir):
     data = defaultdict(int)
 
     for current_root, dirs, files in os.walk(root_dir):
-        # skip the root directory itself
         if current_root == root_dir:
             continue
 
@@ -31,19 +30,19 @@ def plot_charts(data, plant_name):
     labels = list(data.keys())
     values = list(data.values())
 
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
+
     # Bar chart
-    plt.figure()
-    plt.bar(labels, values)
-    plt.title(f"Image Distribution for {plant_name}")
-    plt.xlabel("Class")
-    plt.ylabel("Number of Images")
-    plt.tight_layout()
-    plt.show()
+    ax1.bar(labels, values)
+    ax1.set_title(f"Image Distribution for {plant_name}")
+    ax1.set_xlabel("Class")
+    ax1.set_ylabel("Number of Images")
+    ax1.tick_params(axis='x', rotation=45)
 
     # Pie chart
-    plt.figure()
-    plt.pie(values, labels=labels, autopct="%1.1f%%")
-    plt.title(f"Image Distribution for {plant_name}")
+    ax2.pie(values, labels=labels, autopct="%1.1f%%")
+    ax2.set_title(f"Image Distribution for {plant_name}")
+
     plt.tight_layout()
     plt.show()
 
