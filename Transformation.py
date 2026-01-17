@@ -38,29 +38,6 @@ def vis(data):
     plt.show()
 
 
-def cved(imgs):
-    processed = []
-    for path in imgs:
-        assert os.path.isfile(path), f"improper file: '{path}'"
-        img = cv2.imread(path)
-        assert img is not None, f"improper image '{path}'"
-        processed.append(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-    return processed
-
-
-def save_files(og_paths, data, dst):
-    os.makedirs(dst, exist_ok=True)
-    for change, imgs in data.items():
-        suffix = "_" + change.replace(" ", "_")
-        for i, img_rgb in enumerate(imgs):
-            if i < len(og_paths):
-                filename = os.path.basename(og_paths[i])
-                name, ext = os.path.splitext(filename)
-                new_path = os.path.join(dst, f"{name}{suffix}{ext}")
-                img_bgr = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR)
-                cv2.imwrite(new_path, img_bgr)
-
-
 def vis_histogram_analysis(img_rgb):
     """
     Replicates the complex histogram from Leaffliction Figure IV.7.
@@ -69,18 +46,12 @@ def vis_histogram_analysis(img_rgb):
     img_hsv = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2HSV)
     img_lab = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2LAB)
     channels = [
-        # --- RGB ---
         (img_rgb, 0, 'Red', 'red'),
         (img_rgb, 1, 'Green', 'green'),
         (img_rgb, 2, 'Blue', 'blue'),
-
-        # --- HSV ---
-        # Note: Hue in OpenCV is 0-179, others are 0-255.
         (img_hsv, 0, 'Hue', 'purple'),
         (img_hsv, 1, 'Saturation', 'cyan'),
         (img_hsv, 2, 'Value', 'orange'),
-
-        # --- LAB ---
         (img_lab, 0, 'Lightness', 'black'),
         (img_lab, 1, 'Green-Magenta', 'magenta'),
         (img_lab, 2, 'Blue-Yellow', 'yellow')
@@ -114,30 +85,84 @@ def vis_histogram_analysis(img_rgb):
     plt.show()
 
 
+def cved(path_list):
+    processed = []
+    valid_paths = []
+    for path in path_list:
+        if not os.path.isfile(path):
+            continue
+        img = cv2.imread(path)
+        if img is not None:
+            processed.append(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+            valid_paths.append(path)
+    return processed, valid_paths
+
+
+# def save_files(og_paths, data, dst):
+#     os.makedirs(dst, exist_ok=True)
+#     for change, imgs in data.items():
+#         suffix = "_" + change.replace(" ", "_")
+#         for i, img_rgb in enumerate(imgs):
+#             if i < len(og_paths):
+#                 filename = os.path.basename(og_paths[i])
+#                 name, ext = os.path.splitext(filename)
+#                 new_path = os.path.join(dst, f"{name}{suffix}{ext}")
+#                 img_bgr = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR)
+#                 cv2.imwrite(new_path, img_bgr)
+
+
+def save_files(og_paths, data, dst, src_root):
+    """
+    Saves files while preserving the subdirectory structure from src_root.
+    """
+    for change, imgs in data.items():
+        if change == "Original":
+            continue
+
+        suffix = "_" + change.replace(" ", "_")
+        for i, img_rgb in enumerate(imgs):
+            if i >= len(og_paths):
+                break
+            original_full_path = og_paths[i]
+            if src_root:
+                rel_path = os.path.relpath(original_full_path, src_root)
+            else:
+                rel_path = os.path.basename(original_full_path)
+            dest_dir = os.path.join(dst, os.path.dirname(rel_path))
+            filename = os.path.basename(rel_path)
+            name, ext = os.path.splitext(filename)
+            os.makedirs(dest_dir, exist_ok=True)
+            new_path = os.path.join(dest_dir, f"{name}{suffix}{ext}")
+            img_bgr = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR)
+            cv2.imwrite(new_path, img_bgr)
+
+
 def main():
-    parser = argparse.ArgumentParser(
-        description="Augments an image and displays it"
-    )
-    parser.add_argument('imgs', nargs='*', help='image to transform')
-    parser.add_argument('-src', help='Source directory')
-    parser.add_argument('-dst', help='Save changes')
+    parser = argparse.ArgumentParser(description="Image Transformations")
+    parser.add_argument('imgs', nargs='*', help='Image files')
+    parser.add_argument('-src', help='Source directory (Recursive)')
+    parser.add_argument('-dst', help='Destination directory')
+    parser.add_argument('-tsf', help='"mask", "blur", "roi"')
     args = parser.parse_args()
 
     assert bool(args.imgs) != bool(args.src), "either pass imgs or src"
     if args.src:
         assert os.path.isdir(args.src), "src directory not valid"
-        args.imgs = [os.path.join(args.src, f) for f in os.listdir(args.src)]
-        args.imgs = [f for f in args.imgs if os.path.isfile(f)]
+        for root, _, files in os.walk(args.src):
+            for file in files:
+                if file.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp')):
+                    args.imgs.append(os.path.join(root, file))
 
     if not args.dst:
         args.imgs = args.imgs[:DISPLAY]
-    imgs = cved(args.imgs)
-    data = transform(imgs)
+    imgs, valid_paths = cved(args.imgs)
+    data = transform(imgs, selection=args.tsf)
     vis(data)
-    vis_histogram_analysis(imgs[0])
+    if imgs and not args.dst:
+        vis_histogram_analysis(imgs[0])
 
     if args.dst:
-        save_files(args.imgs, data, args.dst)
+        save_files(valid_paths, data, args.dst, args.src)
 
 
 if __name__ == "__main__":

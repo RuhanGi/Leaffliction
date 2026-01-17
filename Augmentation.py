@@ -78,11 +78,16 @@ def generate_balanced_dataset(imgs, paths, target_count):
     for i in range(needed):
         rand_idx = random.randint(0, len(imgs) - 1)
         func, name = random.choice(AvailableTransforms)
+        aug_img = func(imgs[rand_idx])
+
         directory = os.path.dirname(paths[rand_idx])
         filename = os.path.basename(paths[rand_idx])
-        root, ext = os.path.splitext(filename)
-        save_path = os.path.join(directory, f"{root}_{name}{ext}")
-        aug_img = func(imgs[rand_idx])
+        base_name = filename.split('_aug_')[0].split('.')[0]
+        ext = os.path.splitext(filename)[1]
+        unique_id = current_count + i
+        save_name = f"{base_name}_aug_{unique_id}_{name}{ext}"
+        save_path = os.path.join(directory, save_name)
+
         img_bgr = cv2.cvtColor(aug_img, cv2.COLOR_RGB2BGR)
         cv2.imwrite(save_path, img_bgr)
         imgs.append(aug_img)

@@ -13,8 +13,7 @@ def get_plant_mask(img):
 
     mask = cv2.inRange(hsv, lower_green, upper_green)
     kernel = np.ones((5, 5), np.uint8)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-    return mask
+    return cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
 
 
 def apply_mask(img):
@@ -23,8 +22,7 @@ def apply_mask(img):
     Keeps the original leaf colors but blacks out the background.
     """
     binary_mask = get_plant_mask(img)
-    masked_img = cv2.bitwise_and(img, img, mask=binary_mask)
-    return masked_img
+    return cv2.bitwise_and(img, img, mask=binary_mask)
 
 
 def apply_roi(img):
@@ -82,13 +80,23 @@ def apply_landmarks(img):
     return out
 
 
-def transform(imgs):
-    data = {
-        "Original":       imgs,
-        "Gaussian Blur":  [cv2.GaussianBlur(img, (15, 15), 0) for img in imgs],
-        "Mask":           [apply_mask(img) for img in imgs],
-        "ROI Objects":    [apply_roi(img) for img in imgs],
-        "Analyze Object": [apply_analyze(img) for img in imgs],
-        "Pseudolandmarks": [apply_landmarks(img) for img in imgs]
+def transform(imgs, selection=None):
+    """
+    Applies transformations.
+    If 'selection' is provided, only applies that specific transform.
+    """
+    ops = {
+        "Gaussian Blur": lambda x: cv2.GaussianBlur(x, (15, 15), 0),
+        "Mask":            apply_mask,
+        "ROI Objects":     apply_roi,
+        "Analyze Object":  apply_analyze,
+        "Pseudolandmarks": apply_landmarks
     }
+    data = {"Original": imgs}
+
+    for key, func in ops.items():
+        if selection and selection.lower() not in key.lower():
+            continue
+        data[key] = [func(img) for img in imgs]
+
     return data

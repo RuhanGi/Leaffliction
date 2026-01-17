@@ -42,7 +42,7 @@ fclean: clean
 
 gpush: fclean
 	git add .
-	git commit -m "Augmented"
+	git commit -m "Transformations Finalized"
 	git push
 
 re: fclean all
