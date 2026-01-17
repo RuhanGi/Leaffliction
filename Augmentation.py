@@ -1,11 +1,12 @@
 import matplotlib.pyplot as plt
-import argparse
 import numpy as np
+import argparse
+import random
 import cv2
 import os
 
 from modules.config import DISPLAY, on_key, RED, RESET
-from modules.augments import transform
+from modules.augments import transform, AvailableTransforms
 
 
 def vis(data):
@@ -38,14 +39,18 @@ def vis(data):
     plt.show()
 
 
-def cved(imgs):
+def cved(path_list):
+    """Loads images from a list of paths"""
     processed = []
-    for path in imgs:
-        assert os.path.isfile(path), f"improper file: '{path}'"
+    valid_paths = []
+    for path in path_list:
+        if not os.path.isfile(path):
+            continue
         img = cv2.imread(path)
-        assert img is not None, f"improper image '{path}'"
-        processed.append(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-    return processed
+        if img is not None:
+            processed.append(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+            valid_paths.append(path)
+    return processed, valid_paths
 
 
 def save_files(og_paths, data):
@@ -61,22 +66,57 @@ def save_files(og_paths, data):
                 cv2.imwrite(new_path, img_bgr)
 
 
+def generate_balanced_dataset(imgs, paths, target_count):
+    """
+    Randomly generates images until total count = target_count.
+    """
+    current_count = len(imgs)
+    needed = target_count - current_count
+    if needed <= 0:
+        return
+
+    for i in range(needed):
+        rand_idx = random.randint(0, len(imgs) - 1)
+        func, name = random.choice(AvailableTransforms)
+        directory = os.path.dirname(paths[rand_idx])
+        filename = os.path.basename(paths[rand_idx])
+        root, ext = os.path.splitext(filename)
+        save_path = os.path.join(directory, f"{root}_{name}{ext}")
+        aug_img = func(imgs[rand_idx])
+        img_bgr = cv2.cvtColor(aug_img, cv2.COLOR_RGB2BGR)
+        cv2.imwrite(save_path, img_bgr)
+        imgs.append(aug_img)
+        paths.append(save_path)
+
+    print(f"\nSuccessfully generated {needed} images.")
+
+
 def main():
-    parser = argparse.ArgumentParser(
-        description="Augments an image and displays it"
-    )
-    parser.add_argument('imgs', nargs='+', help='image to augment')
+    parser = argparse.ArgumentParser(description="Augments images.")
+    parser.add_argument('imgs', nargs='*', help='List of images to augment')
+    parser.add_argument('-src', help='Source directory containing images')
     parser.add_argument('--save', action='store_true', help='Save changes')
-    parser.add_argument('-number', )
+    parser.add_argument('-count', type=int, help='Target count of images')
     args = parser.parse_args()
 
-    if not args.save:
+    assert bool(args.imgs) != bool(args.src), "either pass imgs or src"
+    if args.src:
+        assert os.path.isdir(args.src), "src directory not valid"
+        args.imgs = [os.path.join(args.src, f) for f in os.listdir(args.src)]
+        args.imgs = [f for f in args.imgs if os.path.isfile(f)]
+
+    if not args.count and not args.save:
         args.imgs = args.imgs[:DISPLAY]
-    imgs = cved(args.imgs)
-    data = transform(imgs)
-    vis(data)
-    if args.save:
-        save_files(args.imgs, data)
+    loaded_imgs, valid_paths = cved(args.imgs)
+    assert bool(loaded_imgs), "No valid images found"
+    if args.count:
+        generate_balanced_dataset(loaded_imgs, valid_paths, args.count)
+    else:
+        data = transform(loaded_imgs)
+        vis(data)
+        if args.save:
+            save_files(valid_paths, data)
+            print("Grid augmentations saved.")
 
 
 if __name__ == "__main__":

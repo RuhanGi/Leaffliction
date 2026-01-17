@@ -22,15 +22,14 @@ check:
 	done
 
 f:
-	flake8 *.py
-	flake8 modules/*.py
+	-python -m flake8 .
 
 d: f
 	python Distribution.py $(DATASET)/Apple
 	python Distribution.py $(DATASET)/Grape
 
 a: f
-	python Augmentation.py $(DATASET)/Apple/Healthy/*
+	python Augmentation.py $(DATASET)/Apple/Healthy/image\ (1).JPG
 
 t: f
 	python Transformation.py -src $(DATASET)/Grape/Healthy
@@ -43,7 +42,7 @@ fclean: clean
 
 gpush: fclean
 	git add .
-	git commit -m "Train"
+	git commit -m "Augmented"
 	git push
 
 re: fclean all
