@@ -42,7 +42,7 @@ fclean: clean
 
 gpush: fclean
 	git add .
-	git commit -m "Mustafa Part 2"
+	git commit -m "Mustafa Part 3"
 	git push
 
 re: fclean all

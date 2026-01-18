@@ -8,6 +8,13 @@ from modules.config import DISPLAY, on_key, RED, RESET
 from modules.transforms import transform
 
 
+def is_image(filename):
+    """Safety check: ensures we only process actual images."""
+    return filename.lower().endswith(
+        ('.png', '.jpg', '.jpeg', '.bmp', '.gif', '.tiff')
+    )
+
+
 def vis(data):
     keys = list(data.keys())
     arr2d = list(data.values())
@@ -150,7 +157,7 @@ def main():
         assert os.path.isdir(args.src), "src directory not valid"
         for root, _, files in os.walk(args.src):
             for file in files:
-                if file.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp')):
+                if is_image(file):
                     args.imgs.append(os.path.join(root, file))
 
     if not args.dst:
