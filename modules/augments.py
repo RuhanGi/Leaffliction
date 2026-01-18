@@ -13,11 +13,14 @@ def apply_skew(img):
 
 
 def apply_shear(img):
-    """Shear: Slants the image."""
+    """
+    Shear: Slants the image horizontally.
+    Fixes: Keeps original size and fills gaps with reflection.
+    """
     rows, cols = img.shape[:2]
     shear = 0.2
     M = np.float32([[1, shear, 0], [0, 1, 0]])
-    return cv2.warpAffine(img, M, (int(cols*1.2), rows))
+    return cv2.warpAffine(img, M, (cols, rows), borderMode=cv2.BORDER_REFLECT)
 
 
 def apply_distortion(img):
@@ -35,11 +38,17 @@ def apply_distortion(img):
 
 
 def apply_crop(img):
-    """Center Crop"""
+    """
+    Center Crop (80%) and Resize back to original.
+    Prevents image dimension mismatch errors later.
+    """
     h, w = img.shape[:2]
-    if h < 100 or w < 100:
-        return img
-    return img[50:-50, 50:-50]
+    scale = 0.8
+    new_h, new_w = int(h * scale), int(w * scale)
+    top = (h - new_h) // 2
+    left = (w - new_w) // 2
+    cropped = img[top:top+new_h, left:left+new_w]
+    return cv2.resize(cropped, (w, h), interpolation=cv2.INTER_LINEAR)
 
 
 def apply_flip(img):
