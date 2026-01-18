@@ -42,7 +42,7 @@ fclean: clean
 
 gpush: fclean
 	git add .
-	git commit -m "Transformations Finalized"
+	git commit -m "Mustafa Part 1"
 	git push
 
 re: fclean all

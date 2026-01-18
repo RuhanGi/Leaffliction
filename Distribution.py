@@ -4,6 +4,13 @@ import argparse
 from modules.config import parse, on_key, RED, RESET
 
 
+def is_image(filename):
+    """Safety check: ensures we only count actual images."""
+    return filename.lower().endswith(
+        ('.png', '.jpg', '.jpeg', '.bmp', '.gif', '.tiff')
+    )
+
+
 def pie_chart(all_files, counts, ax, dir):
     wedges, texts, autotexts = ax.pie(
         counts,
@@ -31,10 +38,23 @@ def bar_chart(all_files, counts, ax, colors):
 
 
 def analyse(dir, all_files):
+    clean_files = {}
+    for category, files in all_files.items():
+        valid = [f for f in files if is_image(f)]
+        if valid:
+            clean_files[category] = valid
+    all_files = clean_files
+
+    print(f"[Analysis] Distribution for '{dir}':")
+    total = 0
+    for category, files in all_files.items():
+        count = len(files)
+        total += count
+        print(f"  - {category}: {count} images")
+    print(f"  = Total: {total} images\n")
+
     counts = [len(files) for files in all_files.values()]
-    if len(all_files) == 0 or sum(counts) == 0:
-        print(RED, "No files found in child subdirectory!", RESET)
-        return
+    assert bool(len(all_files)) and bool(sum(counts)), "No file found!"
 
     fig, ax = plt.subplots(1, 2, figsize=(12, 6), num=(dir + " Distribution"))
     colors = pie_chart(all_files, counts, ax[0], dir)
