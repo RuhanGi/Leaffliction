@@ -1,6 +1,6 @@
 import sys
 import os
-from PIL import Image
+from PIL import Image, ImageOps, ImageEnhance
 import math
 
 def load_image(path):
@@ -53,6 +53,10 @@ def crop(img):
     # Resize back to original size
     return cropped.resize((w, h), Image.LANCZOS)
 
+def brightness(img):
+    enhancer = ImageEnhance.Brightness(img)
+    return enhancer.enhance(1.3)
+
 def main():
     if len(sys.argv) != 2:
         print("Usage: ./Augmentation.py <image_path>")
@@ -69,10 +73,12 @@ def main():
 
     img = load_image(path)
 
+    save(brightness(img), base, "Brightness", ext, out_dir)
     save(flip(img), base, "Flip", ext, out_dir)
     save(rotate(img), base, "Rotate", ext, out_dir)
     save(skew(img), base, "Skew", ext, out_dir)
     save(shear(img), base, "Shear", ext, out_dir)
+    save(crop(img), base, "Crop", ext, out_dir)
 
 if __name__ == "__main__":
     try:
