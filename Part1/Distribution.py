@@ -24,6 +24,7 @@ def collect_distribution(root_dir):
                 data[label] += 1
 
     return data
+# Example return value: {'grape': 30, 'apple': 20}
 
 
 def plot_charts(data, plant_name):
@@ -37,7 +38,7 @@ def plot_charts(data, plant_name):
     ax1.set_title(f"Image Distribution for {plant_name}")
     ax1.set_xlabel("Class")
     ax1.set_ylabel("Number of Images")
-    ax1.tick_params(axis='x', rotation=45)
+    ax1.tick_params(axis='x', rotation=45) # Rotate x-axis labels for better readability
 
     # Pie chart
     ax2.pie(values, labels=labels, autopct="%1.1f%%")
@@ -59,7 +60,9 @@ def main():
         sys.exit(1)
 
     plant_name = os.path.basename(os.path.abspath(root_dir))
+    # print(f"Collecting image distribution for plant: {plant_name}")
     distribution = collect_distribution(root_dir)
+    #print(distribution)
 
     if not distribution:
         print("No images found in subdirectories")
