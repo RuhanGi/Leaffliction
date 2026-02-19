@@ -1,12 +1,12 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import argparse
-import random
 import cv2
 import os
 
 from modules.config import DISPLAY, on_key, RED, RESET
-from modules.augments import transform, AvailableTransforms
+from modules.augments import transform
+from modules.dataset import build_pipeline
 
 
 def vis(data):
@@ -40,7 +40,6 @@ def vis(data):
 
 
 def cved(path_list):
-    """Loads images from a list of paths"""
     processed = []
     valid_paths = []
     for path in path_list:
@@ -66,62 +65,40 @@ def save_files(og_paths, data):
                 cv2.imwrite(new_path, img_bgr)
 
 
-def generate_balanced_dataset(imgs, paths, target_count):
-    """
-    Randomly generates images until total count = target_count.
-    """
-    current_count = len(imgs)
-    needed = target_count - current_count
-    if needed <= 0:
-        return
-
-    for i in range(needed):
-        rand_idx = random.randint(0, len(imgs) - 1)
-        func, name = random.choice(AvailableTransforms)
-        aug_img = func(imgs[rand_idx])
-
-        directory = os.path.dirname(paths[rand_idx])
-        filename = os.path.basename(paths[rand_idx])
-        base_name = filename.split('_aug_')[0].split('.')[0]
-        ext = os.path.splitext(filename)[1]
-        unique_id = current_count + i
-        save_name = f"{base_name}_aug_{unique_id}_{name}{ext}"
-        save_path = os.path.join(directory, save_name)
-
-        img_bgr = cv2.cvtColor(aug_img, cv2.COLOR_RGB2BGR)
-        cv2.imwrite(save_path, img_bgr)
-        imgs.append(aug_img)
-        paths.append(save_path)
-
-    print(f"\nSuccessfully generated {needed} images.")
-
-
 def main():
     parser = argparse.ArgumentParser(description="Augments images.")
     parser.add_argument('imgs', nargs='*', help='List of images to augment')
     parser.add_argument('-src', help='Source directory containing images')
+    parser.add_argument('-dst', help='Destination directory for the pipeline')
     parser.add_argument('--save', action='store_true', help='Save changes')
     parser.add_argument('-count', type=int, help='Target count of images')
+    parser.add_argument('--pipeline', action='store_true', help='Build data')
+    parser.add_argument('-ratio', type=float, default=0.8, help='Train ratio')
     args = parser.parse_args()
 
     assert bool(args.imgs) != bool(args.src), "either pass imgs or src"
+
     if args.src:
         assert os.path.isdir(args.src), "src directory not valid"
+        if args.pipeline:
+            assert args.dst, "must provide -dst with --pipeline"
+            build_pipeline(args.src, args.dst, args.ratio, args.count)
+            return
+
         args.imgs = [os.path.join(args.src, f) for f in os.listdir(args.src)]
         args.imgs = [f for f in args.imgs if os.path.isfile(f)]
 
-    if not args.count and not args.save:
+    if not args.save:
         args.imgs = args.imgs[:DISPLAY]
+
     loaded_imgs, valid_paths = cved(args.imgs)
     assert bool(loaded_imgs), "No valid images found"
-    if args.count:
-        generate_balanced_dataset(loaded_imgs, valid_paths, args.count)
-    else:
-        data = transform(loaded_imgs)
-        vis(data)
-        if args.save:
-            save_files(valid_paths, data)
-            print("Grid augmentations saved.")
+
+    data = transform(loaded_imgs)
+    vis(data)
+    if args.save:
+        save_files(valid_paths, data)
+        print("Grid augmentations saved.")
 
 
 if __name__ == "__main__":

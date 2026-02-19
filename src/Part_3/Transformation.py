@@ -105,19 +105,6 @@ def cved(path_list):
     return processed, valid_paths
 
 
-# def save_files(og_paths, data, dst):
-#     os.makedirs(dst, exist_ok=True)
-#     for change, imgs in data.items():
-#         suffix = "_" + change.replace(" ", "_")
-#         for i, img_rgb in enumerate(imgs):
-#             if i < len(og_paths):
-#                 filename = os.path.basename(og_paths[i])
-#                 name, ext = os.path.splitext(filename)
-#                 new_path = os.path.join(dst, f"{name}{suffix}{ext}")
-#                 img_bgr = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2BGR)
-#                 cv2.imwrite(new_path, img_bgr)
-
-
 def save_files(og_paths, data, dst, src_root):
     """
     Saves files while preserving the subdirectory structure from src_root.

@@ -8,6 +8,8 @@ DATASET = images
 
 PKGS = matplotlib
 
+export PYTHONPATH := ./src
+
 .SILENT:
 
 all: check
@@ -22,17 +24,23 @@ check:
 	done
 
 f:
-	-python -m flake8 .
+	-python -m flake8 src/Part_1 src/Part_2 src/Part_3
 
 d: f
-	python Distribution.py $(DATASET)/Apple
-	python Distribution.py $(DATASET)/Grape
+	python src/Part_1/Distribution.py $(DATASET)/Apple
+	python src/Part_1/Distribution.py $(DATASET)/Grape
 
 a: f
-	python Augmentation.py $(DATASET)/Apple/Healthy/image\ (1).JPG
+	python src/Part_2/Augmentation.py $(DATASET)/Apple/Healthy/image\ (1).JPG $(DATASET)/Apple/Healthy/image\ (2).JPG $(DATASET)/Apple/Healthy/image\ (3).JPG
+
+s: f
+	python src/Part_3/Transformation.py -src $(DATASET) -dst ./masked -tsf mask
 
 t: f
-	python Transformation.py -src $(DATASET)/Grape/Healthy
+	python src/Part_3/Transformation.py -src $(DATASET)/Grape/Spot
+
+train:
+	python src/Part_4/train.py masked
 
 clean:
 
@@ -42,7 +50,7 @@ fclean: clean
 
 gpush: fclean
 	git add .
-	git commit -m "Mustafa Part 3"
+	git commit -m "Cleaner"
 	git push
 
 re: fclean all
