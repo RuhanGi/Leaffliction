@@ -1,97 +1,128 @@
-#!/usr/bin/env python3
-import os
-import sys
-import argparse
-import numpy as np
-import tensorflow as tf
-import cv2
-import json
-import zipfile
 import matplotlib.pyplot as plt
+import numpy as np
+import argparse
+import json
+import cv2
+import os
+import math
 
-# --- MASKING HELPER (Copied from transformations) ---
-def get_plant_mask(img):
-    hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
-    # Standard green mask range
-    lower_green = np.array([25, 40, 40])
-    upper_green = np.array([95, 255, 255])
-    mask = cv2.inRange(hsv, lower_green, upper_green)
-    kernel = np.ones((5, 5), np.uint8)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-    return mask
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
-def apply_mask(img):
-    mask = get_plant_mask(img)
-    return cv2.bitwise_and(img, img, mask=mask)
+import tensorflow as tf
+from modules.config import DISPLAY, on_key, RED, RESET
 
-# --- PREDICTION LOGIC ---
-def load_learnings(zip_path="learnings.zip"):
-    """Extracts model and class names from the zip file"""
-    if not os.path.exists(zip_path):
-        print(f"Error: {zip_path} not found. Run train.py first.")
-        sys.exit(1)
-        
-    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-        zip_ref.extractall("temp_model")
-        
-    model = tf.keras.models.load_model("temp_model/leaf_model.h5")
-    with open("temp_model/classes.json", 'r') as f:
-        class_names = json.load(f)
-        
-    # Cleanup temp folder (optional, or keep for speed)
-    import shutil
-    shutil.rmtree("temp_model")
+IMG_HEIGHT = 128
+IMG_WIDTH = 128
+
+def load_learnings():
+    if not os.path.exists("leaf_model.keras") or not os.path.exists("classes.json"):
+        raise FileNotFoundError("Model or classes.json not found in current directory.")
     
+    model = tf.keras.models.load_model("leaf_model.keras")
+    with open("classes.json", 'r') as f:
+        class_names = json.load(f)
     return model, class_names
 
-def predict_and_display(image_path, model, class_names):
-    # 1. Load Original Image
-    img_bgr = cv2.imread(image_path)
-    if img_bgr is None:
-        print("Error: Could not read image.")
+
+def vis_predictions(imgs_rgb, filenames, predictions, confidences):
+    count = min(len(imgs_rgb), DISPLAY)
+    if count == 0:
         return
-    img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
 
-    # 2. Transform (Apply Mask)
-    # The model expects the image to look like the training data (black background)
-    transformed_img = apply_mask(img_rgb)
-
-    # 3. Prepare for Model (Resize & Batch Dimension)
-    img_resized = cv2.resize(transformed_img, (256, 256))
-    img_array = tf.keras.utils.img_to_array(img_resized)
-    img_array = tf.expand_dims(img_array, 0) # Create a batch
-
-    # 4. Predict
-    predictions = model.predict(img_array)
-    score = tf.nn.softmax(predictions[0])
-    predicted_class = class_names[np.argmax(score)]
-    confidence = 100 * np.max(score)
-
-    print(f"Prediction: {predicted_class} ({confidence:.2f}%)")
-
-    # 5. Display (Original vs Transformed)
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
+    cols = min(count, 4)
+    rows = math.ceil(count / cols)
     
-    ax1.imshow(img_rgb)
-    ax1.set_title("Original Image")
-    ax1.axis("off")
-    
-    ax2.imshow(transformed_img)
-    ax2.set_title(f"Prediction: {predicted_class}\nConf: {confidence:.2f}%")
-    ax2.axis("off")
-    
+    fig, axes = plt.subplots(rows, cols, figsize=(cols*3, rows*3), num="Predictions")
+    if rows == 1 and cols == 1:
+        axes = np.array([[axes]])
+    elif rows == 1:
+        axes = axes.reshape(1, -1)
+    elif cols == 1:
+        axes = axes.reshape(-1, 1)
+
+    for i in range(rows * cols):
+        r, c = divmod(i, cols)
+        ax = axes[r][c]
+        if i < count:
+            ax.imshow(imgs_rgb[i])
+            ax.set_title(f"{predictions[i]}\n({confidences[i]:.1f}%)", fontsize=10, fontweight='bold', pad=5)
+            ax.set_xlabel(filenames[i], fontsize=9)
+            ax.set_xticks([])
+            ax.set_yticks([])
+        else:
+            ax.axis('off')
+
+    plt.subplots_adjust(wspace=0.4, hspace=0.6)
+    fig.canvas.mpl_connect('key_press_event', on_key)
     plt.show()
 
+
+def predict_images(img_paths, model, class_names):
+    imgs_rgb = []
+    filenames = []
+    arrays = []
+
+    for path in img_paths:
+        if not os.path.isfile(path):
+            continue
+        img = cv2.imread(path)
+        if img is not None:
+            rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            resized = cv2.resize(rgb, (IMG_WIDTH, IMG_HEIGHT))
+            imgs_rgb.append(rgb)
+            filenames.append(os.path.basename(path))
+            arrays.append(resized)
+
+    if not arrays:
+        raise ValueError("No valid images found to predict.")
+
+    batch = np.array(arrays)
+    preds = model.predict(batch, verbose=0)
+    
+    predictions = []
+    confidences = []
+    for p in preds:
+        idx = np.argmax(p)
+        predictions.append(class_names[idx])
+        confidences.append(p[idx] * 100)
+
+    vis_predictions(imgs_rgb, filenames, predictions, confidences)
+
+
+def evaluate_directory(src, model, class_names):
+    ds = tf.keras.utils.image_dataset_from_directory(
+        src,
+        image_size=(IMG_HEIGHT, IMG_WIDTH),
+        batch_size=32,
+        shuffle=False
+    )
+    
+    print(f"\nEvaluating directory against {len(class_names)} known classes...")
+    loss, acc = model.evaluate(ds, verbose=1)
+    print(f"\nOverall Accuracy on '{src}': {acc*100:.2f}%")
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Predict leaf disease")
-    parser.add_argument('image', help='Path to an image file')
+    parser = argparse.ArgumentParser(description="Predict leaf disease.")
+    parser.add_argument('imgs', nargs='*', help='Image files to predict')
+    parser.add_argument('-src', help='Directory of subfolders for accuracy evaluation')
     args = parser.parse_args()
 
-    # Load resources
+    assert bool(args.imgs) != bool(args.src), "Provide either images OR a -src directory"
+
     model, class_names = load_learnings()
-    
-    # Run prediction
-    predict_and_display(args.image, model, class_names)
+
+    if args.src:
+        assert os.path.isdir(args.src), "-src directory not valid"
+        evaluate_directory(args.src, model, class_names)
+    else:
+        predict_images(args.imgs, model, class_names)
+
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        print(RED + "Error: " + str(e) + RESET)
+        exit(1)

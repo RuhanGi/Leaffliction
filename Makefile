@@ -27,11 +27,11 @@ f:
 	-python -m flake8 src/Part_1 src/Part_2 src/Part_3
 
 d: f
-	python src/Part_1/Distribution.py $(DATASET)/Apple
-	python src/Part_1/Distribution.py $(DATASET)/Grape
+	python src/Part_1/Distribution.py $(DATASET)/train
+	python src/Part_1/Distribution.py $(DATASET)/val
 
 a: f
-	python src/Part_2/Augmentation.py $(DATASET)/Apple/Healthy/image\ (1).JPG $(DATASET)/Apple/Healthy/image\ (2).JPG $(DATASET)/Apple/Healthy/image\ (3).JPG
+	python src/Part_2/Augmentation.py $(DATASET)/Apple_Healthy/image\ (1).JPG $(DATASET)/Apple_Healthy/image\ (2).JPG $(DATASET)/Apple_Healthy/image\ (3).JPG
 
 s: f
 	python src/Part_3/Transformation.py -src $(DATASET) -dst ./masked -tsf mask
@@ -42,15 +42,21 @@ t: f
 train:
 	python src/Part_4/train.py masked
 
-clean:
+val:
+	python src/Part_4/predict.py -src masked/val
 
+# do wildcard in Linux
+v:
+	python src/Part_4/predict.py "masked/val/Apple_Healthy/image (2)_Mask.JPG" "masked/val/Grape_Esca/image (5)_Mask.JPG" "masked/val/Grape_Spot/image (2)_Mask.JPG"
+
+clean:
 
 fclean: clean
 
 
 gpush: fclean
 	git add .
-	git commit -m "Cleaner"
+	git commit -m "Working 92.53%"
 	git push
 
 re: fclean all
