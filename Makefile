@@ -30,6 +30,9 @@ d: f
 	python src/Part_1/Distribution.py $(DATASET)/train
 	python src/Part_1/Distribution.py $(DATASET)/val
 
+d1: f
+	python src/Part_1/Distribution.py og_images
+
 a: f
 	python src/Part_2/Augmentation.py $(DATASET)/train/Apple_Healthy/image\ (1).JPG $(DATASET)/train/Apple_Healthy/image\ (3).JPG $(DATASET)/train/Apple_Healthy/image\ (4).JPG
 
@@ -49,13 +52,19 @@ val:
 v:
 	python src/Part_4/predict.py "$(DATASET)/val/Apple_Scab/image (2).JPG" "$(DATASET)/val/Apple_Scab/image (14).JPG" "$(DATASET)/val/Grape_Spot/image (2).JPG"
 
+eval1:
+	python src/Part_4/predict.py Unit_test1/Apple_Black_rot1.JPG Unit_test1/Apple_healthy1.JPG Unit_test1/Apple_healthy2.JPG Unit_test1/Apple_rust.JPG Unit_test1/Apple_scab.JPG
+
+eval2:
+	python src/Part_4/predict.py Unit_test2/Grape_Black_rot1.JPG Unit_test2/Grape_Black_rot2.JPG Unit_test2/Grape_Esca.JPG Unit_test2/Grape_healthy.JPG Unit_test2/Grape_spot.JPG
+
 clean:
 
 fclean: clean
 
 gpush: fclean
 	git add .
-	git commit -m "final checks"
+	git commit -m "mask fix"
 	git push
 
 re: fclean all

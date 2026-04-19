@@ -89,7 +89,7 @@ def predict_images(img_paths, model, class_names):
         if img is not None:
             rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             masked = apply_mask(rgb)
-            resized = cv2.resize(rgb, (IMG_WIDTH, IMG_HEIGHT))
+            resized = cv2.resize(masked, (IMG_WIDTH, IMG_HEIGHT))
 
             imgs_rgb.append(rgb)
             imgs_masked.append(masked)

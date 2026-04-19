@@ -3,3 +3,5 @@ images
 src/modules/__pycache__
 masked
 .vscode
+signature.txt
+myLeaf.zip

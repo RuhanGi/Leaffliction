@@ -89,6 +89,7 @@ def main():
     model = create_model(len(class_names))
     early = callbacks.EarlyStopping(
         monitor='val_accuracy',
+        mode='max',
         patience=4,
         restore_best_weights=True
     )
