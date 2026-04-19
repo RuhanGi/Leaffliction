@@ -8,8 +8,6 @@ DATASET = images
 
 PKGS = matplotlib tensorflow cv2
 
-export PYTHONPATH := ./src
-
 .SILENT:
 
 all: check
@@ -27,36 +25,36 @@ f:
 	-python -m flake8 src
 
 d: f
-	python src/Part_1/Distribution.py $(DATASET)/train
-	python src/Part_1/Distribution.py $(DATASET)/val
+	python src/Distribution.py $(DATASET)/train
+	python src/Distribution.py $(DATASET)/val
 
 d1: f
-	python src/Part_1/Distribution.py og_images
+	python src/Distribution.py og_images
 
 a: f
-	python src/Part_2/Augmentation.py $(DATASET)/train/Apple_Healthy/image\ (1).JPG $(DATASET)/train/Apple_Healthy/image\ (3).JPG $(DATASET)/train/Apple_Healthy/image\ (4).JPG
+	python src/Augmentation.py $(DATASET)/train/Apple_Healthy/image\ (1).JPG $(DATASET)/train/Apple_Healthy/image\ (3).JPG $(DATASET)/train/Apple_Healthy/image\ (4).JPG
 
 s: f
-	python src/Part_3/Transformation.py -src $(DATASET) -dst ./masked -tsf mask
+	python src/Transformation.py -src $(DATASET) -dst ./masked -tsf mask
 
 t: f
-	python src/Part_3/Transformation.py -src $(DATASET)/train/Grape_Spot
+	python src/Transformation.py -src $(DATASET)/train/Grape_Spot
 
 train:
-	python src/Part_4/train.py masked
+	python src/train.py masked
 
 val:
-	python src/Part_4/predict.py -src masked/val
+	python src/predict.py -src masked/val
 
 # do wildcard in Linux
 v:
-	python src/Part_4/predict.py "$(DATASET)/val/Apple_Scab/image (2).JPG" "$(DATASET)/val/Apple_Scab/image (14).JPG" "$(DATASET)/val/Grape_Spot/image (2).JPG"
+	python src/predict.py "$(DATASET)/val/Apple_Scab/image (2).JPG" "$(DATASET)/val/Apple_Scab/image (14).JPG" "$(DATASET)/val/Grape_Spot/image (2).JPG"
 
 eval1:
-	python src/Part_4/predict.py Unit_test1/Apple_Black_rot1.JPG Unit_test1/Apple_healthy1.JPG Unit_test1/Apple_healthy2.JPG Unit_test1/Apple_rust.JPG Unit_test1/Apple_scab.JPG
+	python src/predict.py Unit_test1/Apple_Black_rot1.JPG Unit_test1/Apple_healthy1.JPG Unit_test1/Apple_healthy2.JPG Unit_test1/Apple_rust.JPG Unit_test1/Apple_scab.JPG
 
 eval2:
-	python src/Part_4/predict.py Unit_test2/Grape_Black_rot1.JPG Unit_test2/Grape_Black_rot2.JPG Unit_test2/Grape_Esca.JPG Unit_test2/Grape_healthy.JPG Unit_test2/Grape_spot.JPG
+	python src/predict.py Unit_test2/Grape_Black_rot1.JPG Unit_test2/Grape_Black_rot2.JPG Unit_test2/Grape_Esca.JPG Unit_test2/Grape_healthy.JPG Unit_test2/Grape_spot.JPG
 
 clean:
 
@@ -64,7 +62,7 @@ fclean: clean
 
 gpush: fclean
 	git add .
-	git commit -m "mask fix"
+	git commit -m "final"
 	git push
 
 re: fclean all
