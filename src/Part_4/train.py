@@ -3,17 +3,16 @@ import logging
 import json
 import os
 
+from modules.config import CYAN, GREEN, RED, RESET
+from modules.config import IMG_HEIGHT, IMG_WIDTH, BATCH_SIZE, EPOCHS
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 logging.getLogger('tensorflow').setLevel(logging.ERROR)
 
-import tensorflow as tf
-from keras import models, layers, callbacks
-from modules.config import CYAN, GREEN, RED, RESET, IMG_HEIGHT, IMG_WIDTH, BATCH_SIZE, EPOCHS
-
 
 def getData(dir):
-    """Extracts the dataset in an efficient manner from the passed directory."""
+    """Extracts the dataset efficiently from the passed directory."""
     assert os.path.exists(dir), f"Cannot find '{dir}"
     train_dir = os.path.join(dir, 'train')
     val_dir = os.path.join(dir, 'val')
@@ -46,18 +45,18 @@ def create_model(num_classes):
     """Builds the Convolutional Neural Network."""
     model = models.Sequential([
         layers.Input(shape=(IMG_HEIGHT, IMG_WIDTH, 3)),
-    
+
         layers.Rescaling(1./255),
-        
+
         layers.Conv2D(32, (3, 3), activation='relu', padding='same'),
         layers.MaxPooling2D((2, 2)),
-        
+
         layers.Conv2D(64, (3, 3), activation='relu', padding='same'),
         layers.MaxPooling2D((2, 2)),
-        
+
         layers.Conv2D(128, (3, 3), activation='relu', padding='same'),
         layers.MaxPooling2D((2, 2)),
-        
+
         layers.Flatten(),
         layers.Dense(256, activation='relu'),
         layers.Dropout(0.5),
@@ -73,10 +72,10 @@ def create_model(num_classes):
 def save_learnings(model, class_names):
     """Saves the trained model and class labels locally."""
     model.save("leaf_model.keras")
-    
+
     with open("classes.json", 'w') as f:
         json.dump(class_names, f)
-    
+
     print("Successfully saved 'leaf_model.keras' and 'classes.json'")
 
 
@@ -88,18 +87,22 @@ def main():
     print(CYAN + "\nEXTRACTING DATA:" + RESET)
     train_ds, val_ds, class_names = getData(args.dir)
     model = create_model(len(class_names))
-    early = callbacks.EarlyStopping(monitor='val_accuracy', patience=4, restore_best_weights=True)
+    early = callbacks.EarlyStopping(
+        monitor='val_accuracy',
+        patience=4,
+        restore_best_weights=True
+    )
 
     print(CYAN + "\nSTARTING TRAINING:" + RESET)
     try:
-        history = model.fit(
+        model.fit(
             train_ds,
             validation_data=val_ds,
             epochs=EPOCHS,
             callbacks=[early]
         )
     except KeyboardInterrupt:
-        print(RED + "\nTraining interrupted! Evaluating current state..." + RESET)
+        print(RED + "\nInterrupted! Evaluating current state..." + RESET)
 
     val_loss, val_acc = model.evaluate(val_ds, verbose=1)
     print(GREEN + f"Final Validation Accuracy: {val_acc*100:.2f}%" + RESET)
@@ -107,7 +110,10 @@ def main():
     print(CYAN + "\nSAVING MODEL:" + RESET)
     save_learnings(model, class_names)
 
+
 if __name__ == "__main__":
+    import tensorflow as tf
+    from keras import models, layers, callbacks
     try:
         main()
     except Exception as e:
