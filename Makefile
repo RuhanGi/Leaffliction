@@ -47,16 +47,15 @@ val:
 
 # do wildcard in Linux
 v:
-	python src/Part_4/predict.py "$(DATASET)/val/Apple_Scab/image (2).JPG" "$(DATASET)/val/Grape_Esca/image (13).JPG" "$(DATASET)/val/Grape_Spot/image (2).JPG"
+	python src/Part_4/predict.py "$(DATASET)/val/Apple_Scab/image (2).JPG" "$(DATASET)/val/Apple_Scab/image (14).JPG" "$(DATASET)/val/Grape_Spot/image (2).JPG"
 
 clean:
 
 fclean: clean
 
-
 gpush: fclean
 	git add .
-	git commit -m "flake8"
+	git commit -m "final checks"
 	git push
 
 re: fclean all
