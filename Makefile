@@ -24,7 +24,7 @@ check:
 	done
 
 f:
-	-python -m flake8 src/Part_1 src/Part_2 src/Part_3
+	-python -m flake8 src
 
 d: f
 	python src/Part_1/Distribution.py $(DATASET)/train
