@@ -1,23 +1,24 @@
-import matplotlib.pyplot as plt
-import numpy as np
 import argparse
+import logging
 import json
 import cv2
 import os
-import math
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+logging.getLogger('tensorflow').setLevel(logging.ERROR)
 
+import matplotlib.pyplot as plt
 import tensorflow as tf
-from modules.config import DISPLAY, on_key, RED, RESET
+import numpy as np
 
-IMG_HEIGHT = 128
-IMG_WIDTH = 128
+from modules.config import DISPLAY, on_key, CYAN, GREEN, RED, RESET, IMG_HEIGHT, IMG_WIDTH, BATCH_SIZE
+from modules.transforms import apply_mask
+
 
 def load_learnings():
-    if not os.path.exists("leaf_model.keras") or not os.path.exists("classes.json"):
-        raise FileNotFoundError("Model or classes.json not found in current directory.")
+    assert os.path.exists("leaf_model.keras"), "Model not found in current directory."
+    assert os.path.exists("classes.json"), "classes.json not found in current directory."
     
     model = tf.keras.models.load_model("leaf_model.keras")
     with open("classes.json", 'r') as f:
@@ -25,61 +26,82 @@ def load_learnings():
     return model, class_names
 
 
-def vis_predictions(imgs_rgb, filenames, predictions, confidences):
-    count = min(len(imgs_rgb), DISPLAY)
-    if count == 0:
+def evaluate_directory(src, model, class_names):
+    assert os.path.isdir(src), "-src directory not valid"
+    
+    print(CYAN + "\nEXTRACTING IMAGES:" + RESET)
+    ds = tf.keras.utils.image_dataset_from_directory(
+        src,
+        image_size=(IMG_HEIGHT, IMG_WIDTH),
+        batch_size=BATCH_SIZE,
+        shuffle=False
+    )
+    
+    print(CYAN + "\nEVALUATING MODEL:" + RESET)
+    loss, acc = model.evaluate(ds, verbose=1)
+    print(f"\n'{src}':\t Accuracy = {GREEN}[{acc*100:.2f}%]\t{RESET} Loss = {RED}[{loss:.4f}]{RESET}")
+
+
+def vis_predictions(imgs_rgb, imgs_masked, filenames, predictions, confidences):
+    count = len(imgs_rgb)
+    if count == 0: 
         return
 
-    cols = min(count, 4)
-    rows = math.ceil(count / cols)
-    
-    fig, axes = plt.subplots(rows, cols, figsize=(cols*3, rows*3), num="Predictions")
-    if rows == 1 and cols == 1:
-        axes = np.array([[axes]])
-    elif rows == 1:
-        axes = axes.reshape(1, -1)
-    elif cols == 1:
-        axes = axes.reshape(-1, 1)
+    fig, axes = plt.subplots(
+        nrows=3, 
+        ncols=count, 
+        figsize=(count * 4, 10), 
+        constrained_layout=True,
+        num="Leaffliction Predictions"
+    )
 
-    for i in range(rows * cols):
-        r, c = divmod(i, cols)
-        ax = axes[r][c]
-        if i < count:
-            ax.imshow(imgs_rgb[i])
-            ax.set_title(f"{predictions[i]}\n({confidences[i]:.1f}%)", fontsize=10, fontweight='bold', pad=5)
-            ax.set_xlabel(filenames[i], fontsize=9)
-            ax.set_xticks([])
-            ax.set_yticks([])
-        else:
-            ax.axis('off')
+    if count == 1:
+        axes = np.expand_dims(axes, axis=1)
 
-    plt.subplots_adjust(wspace=0.4, hspace=0.6)
+    for c in range(count):
+        axes[0, c].imshow(imgs_rgb[c])
+        axes[0, c].set_title(filenames[c], fontsize=9)
+        axes[0, c].axis('off')
+
+        axes[1, c].imshow(imgs_masked[c])
+        axes[1, c].set_title("Masked", fontsize=9)
+        axes[1, c].axis('off')
+
+        pred_str = f"PREDICTION:\n\n{predictions[c]}\n({confidences[c]:.1f}%)"
+        axes[2, c].text(0.5, 0.5, pred_str, ha='center', va='center', 
+                        color='darkgreen', fontsize=11, fontweight='bold')
+        axes[2, c].axis('off')
+
     fig.canvas.mpl_connect('key_press_event', on_key)
     plt.show()
 
 
 def predict_images(img_paths, model, class_names):
     imgs_rgb = []
+    imgs_masked = []
     filenames = []
     arrays = []
 
     for path in img_paths:
-        if not os.path.isfile(path):
-            continue
+        assert os.path.isfile(path), "Improper Arguments Passed!"
+
         img = cv2.imread(path)
         if img is not None:
             rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            masked = apply_mask(rgb)
             resized = cv2.resize(rgb, (IMG_WIDTH, IMG_HEIGHT))
+
             imgs_rgb.append(rgb)
+            imgs_masked.append(masked)
             filenames.append(os.path.basename(path))
             arrays.append(resized)
 
     if not arrays:
-        raise ValueError("No valid images found to predict.")
+        raise ValueError("No images found.")
 
-    batch = np.array(arrays)
+    batch = np.array(arrays, dtype=np.float32)
     preds = model.predict(batch, verbose=0)
-    
+
     predictions = []
     confidences = []
     for p in preds:
@@ -87,20 +109,7 @@ def predict_images(img_paths, model, class_names):
         predictions.append(class_names[idx])
         confidences.append(p[idx] * 100)
 
-    vis_predictions(imgs_rgb, filenames, predictions, confidences)
-
-
-def evaluate_directory(src, model, class_names):
-    ds = tf.keras.utils.image_dataset_from_directory(
-        src,
-        image_size=(IMG_HEIGHT, IMG_WIDTH),
-        batch_size=32,
-        shuffle=False
-    )
-    
-    print(f"\nEvaluating directory against {len(class_names)} known classes...")
-    loss, acc = model.evaluate(ds, verbose=1)
-    print(f"\nOverall Accuracy on '{src}': {acc*100:.2f}%")
+    vis_predictions(imgs_rgb, imgs_masked, filenames, predictions, confidences)
 
 
 def main():
@@ -114,11 +123,9 @@ def main():
     model, class_names = load_learnings()
 
     if args.src:
-        assert os.path.isdir(args.src), "-src directory not valid"
         evaluate_directory(args.src, model, class_names)
     else:
         predict_images(args.imgs, model, class_names)
-
 
 if __name__ == "__main__":
     try:

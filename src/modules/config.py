@@ -12,6 +12,11 @@ RESET = "\033[0m"
 
 DISPLAY = 6
 
+IMG_HEIGHT = 128
+IMG_WIDTH = 128
+BATCH_SIZE = 32
+EPOCHS = 20
+
 
 def split_dataset(src_dir, ratio):
     files = [f for f in os.listdir(src_dir) if os.path.isfile(os.path.join(src_dir, f))]

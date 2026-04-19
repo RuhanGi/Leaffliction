@@ -2,3 +2,4 @@ og_images
 images
 src/modules/__pycache__
 masked
+.vscode

@@ -1,28 +1,52 @@
-#!/usr/bin/env python3
-import os
-import sys
 import argparse
+import logging
 import json
+import os
 
-# Silence Windows TensorFlow logs
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+logging.getLogger('tensorflow').setLevel(logging.ERROR)
 
 import tensorflow as tf
-from tensorflow.keras import layers, models, callbacks
+from keras import models, layers, callbacks
+from modules.config import CYAN, GREEN, RED, RESET, IMG_HEIGHT, IMG_WIDTH, BATCH_SIZE, EPOCHS
 
-# --- CONFIGURATION ---
-IMG_HEIGHT = 128
-IMG_WIDTH = 128
-BATCH_SIZE = 32
-EPOCHS = 20
+
+def getData(dir):
+    """Extracts the dataset in an efficient manner from the passed directory."""
+    assert os.path.exists(dir), f"Cannot find '{dir}"
+    train_dir = os.path.join(dir, 'train')
+    val_dir = os.path.join(dir, 'val')
+
+    assert os.path.exists(train_dir), f"Cannot find '{train_dir}'"
+    assert os.path.exists(val_dir), f"Cannot find '{val_dir}'"
+    train_ds = tf.keras.utils.image_dataset_from_directory(
+        train_dir,
+        seed=123,
+        image_size=(IMG_HEIGHT, IMG_WIDTH),
+        batch_size=BATCH_SIZE
+    )
+    val_ds = tf.keras.utils.image_dataset_from_directory(
+        val_dir,
+        seed=123,
+        image_size=(IMG_HEIGHT, IMG_WIDTH),
+        batch_size=BATCH_SIZE
+    )
+
+    class_names = train_ds.class_names
+    assert class_names == val_ds.class_names, "Mismatched classes"
+    AUTOTUNE = tf.data.AUTOTUNE
+    train_ds = train_ds.cache().shuffle(1000).prefetch(buffer_size=AUTOTUNE)
+    val_ds = val_ds.cache().prefetch(buffer_size=AUTOTUNE)
+
+    return train_ds, val_ds, class_names
+
 
 def create_model(num_classes):
     """Builds the Convolutional Neural Network."""
     model = models.Sequential([
         layers.Input(shape=(IMG_HEIGHT, IMG_WIDTH, 3)),
-        
-        # Rescaling (0-255 to 0.0-1.0)
+    
         layers.Rescaling(1./255),
         
         layers.Conv2D(32, (3, 3), activation='relu', padding='same'),
@@ -36,10 +60,10 @@ def create_model(num_classes):
         
         layers.Flatten(),
         layers.Dense(256, activation='relu'),
-        layers.Dropout(0.5), # Prevents overfitting
+        layers.Dropout(0.5),
         layers.Dense(num_classes, activation='softmax')
     ])
-    
+
     model.compile(optimizer='adam',
                   loss='sparse_categorical_crossentropy',
                   metrics=['accuracy'])
@@ -48,7 +72,6 @@ def create_model(num_classes):
 
 def save_learnings(model, class_names):
     """Saves the trained model and class labels locally."""
-    print("\n[Saving] Packaging learnings...")
     model.save("leaf_model.keras")
     
     with open("classes.json", 'w') as f:
@@ -58,69 +81,35 @@ def save_learnings(model, class_names):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Train model on split leaf dataset")
-    parser.add_argument('dir', help='Directory containing "train" and "val" subfolders')
+    parser = argparse.ArgumentParser(description="Train Model on Dataset")
+    parser.add_argument('dir', help='Dataset directory for train and val')
     args = parser.parse_args()
-    
-    data_dir = args.dir
-    train_dir = os.path.join(data_dir, 'train')
-    val_dir = os.path.join(data_dir, 'val')
 
-    if not os.path.exists(train_dir) or not os.path.exists(val_dir):
-        print(f"ERROR: Cannot find '{train_dir}' or '{val_dir}'.")
-        print("Please ensure your directory has the pre-split train and val folders.")
-        sys.exit(1)
-
-    print(f"📂 Loading datasets from {data_dir}...")
-
-    train_ds = tf.keras.utils.image_dataset_from_directory(
-        train_dir,
-        seed=123,
-        image_size=(IMG_HEIGHT, IMG_WIDTH),
-        batch_size=BATCH_SIZE
-    )
-
-    val_ds = tf.keras.utils.image_dataset_from_directory(
-        val_dir,
-        seed=123,
-        image_size=(IMG_HEIGHT, IMG_WIDTH),
-        batch_size=BATCH_SIZE
-    )
-
-    class_names = train_ds.class_names
-    print(f"Found {len(class_names)} Classes: {class_names}")
-
-    # Optimize data pipeline for speed
-    AUTOTUNE = tf.data.AUTOTUNE
-    train_ds = train_ds.cache().shuffle(1000).prefetch(buffer_size=AUTOTUNE)
-    val_ds = val_ds.cache().prefetch(buffer_size=AUTOTUNE)
-
-    # Build and Train
+    print(CYAN + "\nEXTRACTING DATA:" + RESET)
+    train_ds, val_ds, class_names = getData(args.dir)
     model = create_model(len(class_names))
-    
-    early_stopping = callbacks.EarlyStopping(
-        monitor='val_loss', 
-        patience=4, 
-        restore_best_weights=True, 
-        verbose=1
-    )
+    early = callbacks.EarlyStopping(monitor='val_accuracy', patience=4, restore_best_weights=True)
 
-    print("\n🚀 Starting Training...")
+    print(CYAN + "\nSTARTING TRAINING:" + RESET)
     try:
         history = model.fit(
             train_ds,
             validation_data=val_ds,
             epochs=EPOCHS,
-            callbacks=[early_stopping]
+            callbacks=[early]
         )
     except KeyboardInterrupt:
-        print("\nTraining interrupted by user. Evaluating current state...")
+        print(RED + "\nTraining interrupted! Evaluating current state..." + RESET)
 
-    val_loss, val_acc = model.evaluate(val_ds, verbose=2)
-    print(f"Final Validation Accuracy: {val_acc*100:.2f}%")
+    val_loss, val_acc = model.evaluate(val_ds, verbose=1)
+    print(GREEN + f"Final Validation Accuracy: {val_acc*100:.2f}%" + RESET)
 
+    print(CYAN + "\nSAVING MODEL:" + RESET)
     save_learnings(model, class_names)
 
-
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        print(RED + "Error: " + str(e) + RESET)
+        exit(1)

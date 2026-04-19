@@ -6,7 +6,7 @@ RESET   := \033[0m
 
 DATASET = images
 
-PKGS = matplotlib
+PKGS = matplotlib tensorflow cv2
 
 export PYTHONPATH := ./src
 
@@ -31,13 +31,13 @@ d: f
 	python src/Part_1/Distribution.py $(DATASET)/val
 
 a: f
-	python src/Part_2/Augmentation.py $(DATASET)/Apple_Healthy/image\ (1).JPG $(DATASET)/Apple_Healthy/image\ (2).JPG $(DATASET)/Apple_Healthy/image\ (3).JPG
+	python src/Part_2/Augmentation.py $(DATASET)/train/Apple_Healthy/image\ (1).JPG $(DATASET)/train/Apple_Healthy/image\ (3).JPG $(DATASET)/train/Apple_Healthy/image\ (4).JPG
 
 s: f
 	python src/Part_3/Transformation.py -src $(DATASET) -dst ./masked -tsf mask
 
 t: f
-	python src/Part_3/Transformation.py -src $(DATASET)/Grape/Spot
+	python src/Part_3/Transformation.py -src $(DATASET)/train/Grape_Spot
 
 train:
 	python src/Part_4/train.py masked
@@ -47,7 +47,7 @@ val:
 
 # do wildcard in Linux
 v:
-	python src/Part_4/predict.py "masked/val/Apple_Healthy/image (2)_Mask.JPG" "masked/val/Grape_Esca/image (5)_Mask.JPG" "masked/val/Grape_Spot/image (2)_Mask.JPG"
+	python src/Part_4/predict.py "$(DATASET)/val/Apple_Scab/image (2).JPG" "$(DATASET)/val/Grape_Esca/image (13).JPG" "$(DATASET)/val/Grape_Spot/image (2).JPG"
 
 clean:
 
@@ -56,7 +56,7 @@ fclean: clean
 
 gpush: fclean
 	git add .
-	git commit -m "Working 92.53%"
+	git commit -m "Finalized"
 	git push
 
 re: fclean all
